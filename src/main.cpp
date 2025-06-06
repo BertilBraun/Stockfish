@@ -21,7 +21,7 @@
 #include "bitboard.h"
 #include "misc.h"
 #include "position.h"
-#include "types.h"
+#include "movegen.h"
 
 using namespace Stockfish;
 
@@ -30,11 +30,11 @@ int main(int argc, char* argv[]) {
     Bitboards::init();
     Position::init();
 
-    StateInfo si;
     Position pos;
-    pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", false, &si);
+    pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", false);
 
-    for (auto move : MoveList<LEGAL>(pos)) {
+    for (auto move : MoveList<LEGAL>(pos))
+    {
         std::cout << "Move: " << move.from_sq() << ":" << move.to_sq() << std::endl;
     }
 
