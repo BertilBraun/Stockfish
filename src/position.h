@@ -20,53 +20,13 @@
 #define POSITION_H_INCLUDED
 
 #include <cassert>
-#include <deque>
 #include <iosfwd>
 #include <memory>
 #include <string>
 
 #include "bitboard.h"
-#include "types.h"
 
 namespace Stockfish {
-
-class TranspositionTable;
-
-// StateInfo struct stores information needed to restore a Position object to
-// its previous state when we retract a move. Whenever a move is made on the
-// board (by calling Position::do_move), a StateInfo object must be passed.
-
-struct StateInfo {
-
-    // Copied when making a move
-    Key    materialKey;
-    Key    pawnKey;
-    Key    minorPieceKey;
-    Key    nonPawnKey[COLOR_NB];
-    Value  nonPawnMaterial[COLOR_NB];
-    int    castlingRights;
-    int    rule50;
-    int    pliesFromNull;
-    Square epSquare;
-
-    // Not copied when making a move (will be recomputed anyhow)
-    Key        key;
-    Bitboard   checkersBB;
-    StateInfo* previous;
-    Bitboard   blockersForKing[COLOR_NB];
-    Bitboard   pinners[COLOR_NB];
-    Bitboard   checkSquares[PIECE_TYPE_NB];
-    Piece      capturedPiece;
-    int        repetition;
-};
-
-
-// A list to keep track of the position states along the setup moves (from the
-// start position to the position just before the search starts). Needed by
-// 'draw by repetition' detection. Use a std::deque because pointers to
-// elements are not invalidated upon list resizing.
-using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
-
 
 // Position class stores information regarding the board representation as
 // pieces, side to move, hash keys, castling info, etc. Important methods are
@@ -76,13 +36,11 @@ class Position {
    public:
     static void init();
 
-    Position()                           = default;
-    Position(const Position&)            = delete;
-    Position& operator=(const Position&) = delete;
+    Position() { memset(this, 0, sizeof(Position)); }  // NOLINT(*-pro-type-member-init)
 
     // FEN string input/output
-    Position&   set(const std::string& fenStr, bool isChess960, StateInfo* si);
-    Position&   set(const std::string& code, Color c, StateInfo* si);
+    Position&   set(const std::string& fenStr, bool isChess960);
+    Position&   set(const std::string& code, Color c);
     std::string fen() const;
 
     // Position representation
@@ -112,13 +70,12 @@ class Position {
     Bitboard checkers() const;
     Bitboard blockers_for_king(Color c) const;
     Bitboard check_squares(PieceType pt) const;
-    Bitboard pinners(Color c) const;
 
     // Attacks to/from a given square
     Bitboard attackers_to(Square s) const;
     Bitboard attackers_to(Square s, Bitboard occupied) const;
     bool     attackers_to_exist(Square s, Bitboard occupied, Color c) const;
-    void     update_slider_blockers(Color c) const;
+    void     update_slider_blockers(Color c);
     template<PieceType Pt>
     Bitboard attacks_by(Color c) const;
 
@@ -132,11 +89,8 @@ class Position {
     Piece captured_piece() const;
 
     // Doing and undoing moves
-    void       do_move(Move m, StateInfo& newSt, const TranspositionTable* tt);
-    DirtyPiece do_move(Move m, StateInfo& newSt, bool givesCheck, const TranspositionTable* tt);
-    void       undo_move(Move m);
-    void       do_null_move(StateInfo& newSt, const TranspositionTable& tt);
-    void       undo_null_move();
+    void       do_move(Move m);
+    DirtyPiece do_move(Move m, bool givesCheck);
 
     // Static Exchange Evaluation
     bool see_ge(Move m, int threshold = 0) const;
@@ -152,19 +106,15 @@ class Position {
     Color side_to_move() const;
     int   game_ply() const;
     bool  is_chess960() const;
-    bool  is_draw(int ply) const;
-    bool  is_repetition(int ply) const;
-    bool  upcoming_repetition(int ply) const;
-    bool  has_repeated() const;
+    bool  is_draw() const;
+    bool  is_repetition() const;
     int   rule50_count() const;
     Value non_pawn_material(Color c) const;
     Value non_pawn_material() const;
 
     // Position consistency check, for debugging
-    bool pos_is_ok() const;
-    void flip();
-
-    StateInfo* state() const;
+    bool        pos_is_ok() const;
+    std::string flip() const;
 
     void put_piece(Piece pc, Square s);
     void remove_piece(Square s);
@@ -172,12 +122,11 @@ class Position {
    private:
     // Initialization helpers (used while setting up a position)
     void set_castling_right(Color c, Square rfrom);
-    void set_state() const;
-    void set_check_info() const;
+    void set_state();
+    void set_check_info();
 
     // Other helpers
     void move_piece(Square from, Square to);
-    template<bool Do>
     void do_castling(Color             us,
                      Square            from,
                      Square&           to,
@@ -188,17 +137,39 @@ class Position {
     Key adjust_key50(Key k) const;
 
     // Data members
-    Piece      board[SQUARE_NB];
-    Bitboard   byTypeBB[PIECE_TYPE_NB];
-    Bitboard   byColorBB[COLOR_NB];
-    int        pieceCount[PIECE_NB];
-    int        castlingRightsMask[SQUARE_NB];
-    Square     castlingRookSquare[CASTLING_RIGHT_NB];
-    Bitboard   castlingPath[CASTLING_RIGHT_NB];
-    StateInfo* st;
-    int        gamePly;
-    Color      sideToMove;
-    bool       chess960;
+    Piece    board[SQUARE_NB]{};
+    Bitboard byTypeBB[PIECE_TYPE_NB]{};
+    Bitboard byColorBB[COLOR_NB]{};
+    int      pieceCount[PIECE_NB]{};
+    int      castlingRightsMask[SQUARE_NB]{};
+    Square   castlingRookSquare[CASTLING_RIGHT_NB]{};
+    Bitboard castlingPath[CASTLING_RIGHT_NB]{};
+    int      gamePly{};
+    Color    sideToMove;
+    bool     chess960{};
+
+
+    // Copied when making a move
+    Key    materialKey{};
+    Key    pawnKey{};
+    Key    minorPieceKey{};
+    Key    nonPawnKey[COLOR_NB]{};
+    Value  nonPawnMaterial[COLOR_NB]{};
+    int    castlingRights{};
+    int    rule50{};
+    int    pliesFromNull{};
+    Square epSquare;
+
+    // Not copied when making a move (will be recomputed anyhow)
+    Key      _key{};
+    Bitboard checkersBB{};
+    Bitboard blockersForKing[COLOR_NB]{};
+    Bitboard pinners[COLOR_NB]{};
+    Bitboard checkSquares[PIECE_TYPE_NB]{};
+    Piece    capturedPiece;
+    int      repetition{};
+    Key      recentKeys[7]{};  // Sliding window: [0] = most recent
+    int      recentCount = 0;
 };
 
 std::ostream& operator<<(std::ostream& os, const Position& pos);
@@ -244,12 +215,12 @@ inline Square Position::square(Color c) const {
     return lsb(pieces(c, Pt));
 }
 
-inline Square Position::ep_square() const { return st->epSquare; }
+inline Square Position::ep_square() const { return epSquare; }
 
-inline bool Position::can_castle(CastlingRights cr) const { return st->castlingRights & cr; }
+inline bool Position::can_castle(CastlingRights cr) const { return castlingRights & cr; }
 
 inline CastlingRights Position::castling_rights(Color c) const {
-    return c & CastlingRights(st->castlingRights);
+    return c & CastlingRights(castlingRights);
 }
 
 inline bool Position::castling_impeded(CastlingRights cr) const {
@@ -280,30 +251,28 @@ inline Bitboard Position::attacks_by(Color c) const {
     }
 }
 
-inline Bitboard Position::checkers() const { return st->checkersBB; }
+inline Bitboard Position::checkers() const { return checkersBB; }
 
-inline Bitboard Position::blockers_for_king(Color c) const { return st->blockersForKing[c]; }
+inline Bitboard Position::blockers_for_king(Color c) const { return blockersForKing[c]; }
 
-inline Bitboard Position::pinners(Color c) const { return st->pinners[c]; }
+inline Bitboard Position::check_squares(PieceType pt) const { return checkSquares[pt]; }
 
-inline Bitboard Position::check_squares(PieceType pt) const { return st->checkSquares[pt]; }
-
-inline Key Position::key() const { return adjust_key50<false>(st->key); }
+inline Key Position::key() const { return adjust_key50<false>(_key); }
 
 template<bool AfterMove>
 inline Key Position::adjust_key50(Key k) const {
-    return st->rule50 < 14 - AfterMove ? k : k ^ make_key((st->rule50 - (14 - AfterMove)) / 8);
+    return rule50 < 14 - AfterMove ? k : k ^ make_key((rule50 - (14 - AfterMove)) / 8);
 }
 
-inline Key Position::pawn_key() const { return st->pawnKey; }
+inline Key Position::pawn_key() const { return pawnKey; }
 
-inline Key Position::material_key() const { return st->materialKey; }
+inline Key Position::material_key() const { return materialKey; }
 
-inline Key Position::minor_piece_key() const { return st->minorPieceKey; }
+inline Key Position::minor_piece_key() const { return minorPieceKey; }
 
-inline Key Position::non_pawn_key(Color c) const { return st->nonPawnKey[c]; }
+inline Key Position::non_pawn_key(Color c) const { return nonPawnKey[c]; }
 
-inline Value Position::non_pawn_material(Color c) const { return st->nonPawnMaterial[c]; }
+inline Value Position::non_pawn_material(Color c) const { return nonPawnMaterial[c]; }
 
 inline Value Position::non_pawn_material() const {
     return non_pawn_material(WHITE) + non_pawn_material(BLACK);
@@ -311,7 +280,7 @@ inline Value Position::non_pawn_material() const {
 
 inline int Position::game_ply() const { return gamePly; }
 
-inline int Position::rule50_count() const { return st->rule50; }
+inline int Position::rule50_count() const { return rule50; }
 
 inline bool Position::is_chess960() const { return chess960; }
 
@@ -328,7 +297,7 @@ inline bool Position::capture_stage(Move m) const {
     return capture(m) || m.promotion_type() == QUEEN;
 }
 
-inline Piece Position::captured_piece() const { return st->capturedPiece; }
+inline Piece Position::captured_piece() const { return capturedPiece; }
 
 inline void Position::put_piece(Piece pc, Square s) {
 
@@ -361,11 +330,13 @@ inline void Position::move_piece(Square from, Square to) {
     board[to]   = pc;
 }
 
-inline void Position::do_move(Move m, StateInfo& newSt, const TranspositionTable* tt = nullptr) {
-    do_move(m, newSt, gives_check(m), tt);
+inline void Position::do_move(Move m) { do_move(m, gives_check(m)); }
+
+
+inline std::string square_name(Square s) {
+    return std::string{char('a' + file_of(s)), char('1' + rank_of(s))};
 }
 
-inline StateInfo* Position::state() const { return st; }
 
 }  // namespace Stockfish
 

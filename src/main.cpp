@@ -22,23 +22,21 @@
 #include "misc.h"
 #include "position.h"
 #include "types.h"
-#include "uci.h"
-#include "tune.h"
 
 using namespace Stockfish;
 
 int main(int argc, char* argv[]) {
 
-    std::cout << engine_info() << std::endl;
-
     Bitboards::init();
     Position::init();
 
-    UCIEngine uci(argc, argv);
+    StateInfo si;
+    Position pos;
+    pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", false, &si);
 
-    Tune::init(uci.engine_options());
-
-    uci.loop();
+    for (auto move : MoveList<LEGAL>(pos)) {
+        std::cout << "Move: " << move.from_sq() << ":" << move.to_sq() << std::endl;
+    }
 
     return 0;
 }
