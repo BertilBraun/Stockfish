@@ -168,7 +168,7 @@ class Position {
     Bitboard checkSquares[PIECE_TYPE_NB]{};
     Piece    capturedPiece;
     int      repetition{};
-    Key      recentKeys[7]{};  // Sliding window: [0] = most recent
+    Key      recentKeys[6]{};  // Sliding window: [0] = most recent
     int      recentCount = 0;
 };
 

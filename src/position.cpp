@@ -844,18 +844,17 @@ DirtyPiece Position::do_move(Move m, bool givesCheck) {
     // Update king attacks used for fast check detection
     set_check_info();
 
-    // Calculate the repetition info. It is the ply distance from the previous
-    // occurrence of the same position, negative in the 3-fold case, or zero
-    // if the position was not repeated.
-    for (int i = 0; i < std::min(recentCount, 6); ++i)
-        recentKeys[i + 1] = recentKeys[i];
-    recentKeys[0] = _key;
-    recentCount   = std::min(recentCount + 1, 7);
-
+    // Calculate the repetition info. It is the count of how many times
+    // the position has occurred in the last 7 moves
     repetition = 0;
-    for (int i = 2; i < recentCount; i += 2)
+    for (int i = 1; i < recentCount; i += 2)
         if (recentKeys[i] == _key)
             repetition += 1;
+
+    for (int i = std::min(recentCount, 5); i > 0; --i)
+        recentKeys[i] = recentKeys[i - 1];  // copy backwards
+    recentKeys[0] = _key;
+    recentCount   = std::min(recentCount + 1, 6);
 
     assert(pos_is_ok());
 
