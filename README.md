@@ -68,10 +68,23 @@ All other components (search, evaluation, network, UCI, etc.) have been **comple
 ## 📦 Integration Example
 
 ```cpp
-Position pos("startpos"); // or FEN
+#include <iostream>
 
-for (const Move m : MoveList<LEGAL>(pos)) {
-    Position next = pos; // fast copy
-    next.do_move(m);     // fast transition
-    // ... use next in MCTS tree
+#include "bitboard.h"
+#include "misc.h"
+#include "position.h"
+#include "movegen.h"
+
+using namespace Stockfish;
+
+int main() {
+    Bitboards::init();
+    Position::init();
+
+    Position pos;
+    pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", false);
+
+    for (auto move : MoveList<LEGAL>(pos))
+        std::cout << "Move: " << move.from_sq() << ":" << move.to_sq() << std::endl;
 }
+```
